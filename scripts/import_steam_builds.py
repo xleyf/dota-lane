@@ -225,7 +225,21 @@ def main() -> None:
             if index % 10 == 0 or index == len(heroes):
                 print(f"Fetched {index}/{len(heroes)} heroes")
 
-    guides = [guide for hero in heroes for guide in collected.get(hero, [])]
+    # Steam may return the same item under several hero tags. Keep its strongest
+    # hero match so feed counts and per-hero filters do not duplicate unrelated guides.
+    best_by_id: dict[str, dict[str, str | None]] = {}
+    def relevance(guide: dict[str, str | None]) -> int:
+        hero_text = re.sub(r"[^a-z0-9]", "", str(guide["hero"]).lower())
+        title = re.sub(r"[^a-z0-9]", "", str(guide["title"]).lower())
+        description = re.sub(r"[^a-z0-9]", "", str(guide["desc"]).lower())
+        return (100 if hero_text and hero_text in title else 0) + (10 if hero_text and hero_text in description else 0)
+
+    for guide in (item for hero in heroes for item in collected.get(hero, [])):
+        guide_id = str(guide["id"])
+        current = best_by_id.get(guide_id)
+        if current is None or relevance(guide) > relevance(current):
+            best_by_id[guide_id] = guide
+    guides = list(best_by_id.values())
     guides.sort(key=lambda guide: int(guide["id"]), reverse=True)
     missing = [hero for hero in heroes if not collected.get(hero)]
     payload = {
