@@ -5,10 +5,13 @@
 Для нового проекта:
 
 1. Создай проект Supabase.
-2. В Dashboard → SQL Editor запусти `supabase/schema.sql`, затем `supabase/forum.sql`.
+2. В Dashboard → SQL Editor запусти `supabase/schema.sql`, затем `supabase/forum.sql` и `supabase/guide_feedback.sql`.
 3. Возьми Project URL и publishable key в Project Settings → API Keys.
 4. Укажи их в константах `SUPABASE_URL` и `SUPABASE_PUBLISHABLE_KEY` в `index.html`.
 
 Обе схемы разрешают публичное чтение и создание записей с проверками длины и полей. Публичный API не разрешает менять или удалять опубликованные записи. Для открытой формы позже рекомендуется добавить вход через Steam и инструменты модерации.
 
 Не публикуй `service_role` / secret key в HTML или публичном репозитории.
+
+
+Для счётчика матчей и оценок Hero Builds запусти `supabase/guide_feedback.sql` в SQL Editor проекта. Счётчик суммирует добровольные отметки посетителей; Steam не предоставляет статистику сыгранных матчей для отдельного руководства.
