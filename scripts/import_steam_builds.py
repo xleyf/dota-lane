@@ -93,6 +93,34 @@ def relevant_fallback(hero: str, text: str) -> bool:
     return False
 
 
+def parse_performance(text: str) -> tuple[int | None, float | None, str | None]:
+    """Extract performance claims shown in public guide text; never invent stats."""
+    matches = re.search(
+        r"(?<![\w.])(\d[\d,.]*\s*[kK]?)\s*(?:ranked\s+)?(?:matches|games|матч(?:ей|а|и)?|игр(?:ы|а)?)(?!\w)",
+        text,
+        flags=re.I,
+    )
+    win_rate = re.search(
+        r"(?<![\d.])(\d{1,3}(?:\.\d+)?)\s*%\s*(?:wr|win\s*rate|винрейт)",
+        text,
+        flags=re.I,
+    )
+    count: int | None = None
+    if matches:
+        amount = matches.group(1).replace(",", "").replace(" ", "")
+        if amount.lower().endswith("k"):
+            count = round(float(amount[:-1]) * 1000)
+        else:
+            count = int(float(amount))
+    rate = float(win_rate.group(1)) if win_rate else None
+    if rate is not None and not 0 < rate <= 100:
+        rate = None
+    source = None
+    if count is not None or rate is not None:
+        source = "Dota2ProTracker" if re.search(r"D2PT|Dota2ProTracker", text, re.I) else "Описание гайда"
+    return count, rate, source
+
+
 def parse_items(page: str, hero: str, use_tag: bool) -> list[dict[str, str | None]]:
     results: list[dict[str, str | None]] = []
     anchors = re.finditer(
@@ -166,6 +194,7 @@ def parse_items(page: str, hero: str, use_tag: bool) -> list[dict[str, str | Non
         summary = (f"Автор: {author}. " if author else "") + (
             description or "Публичная сборка героя из Steam Community."
         )
+        match_count, win_rate, stats_source = parse_performance(f"{title} {description}")
         results.append(
             {
                 "id": file_id,
@@ -177,6 +206,9 @@ def parse_items(page: str, hero: str, use_tag: bool) -> list[dict[str, str | Non
                 "url": url,
                 "tags": tags,
                 "source": "steam",
+                "match_count": match_count,
+                "win_rate": win_rate,
+                "stats_source": stats_source,
             }
         )
     return results
