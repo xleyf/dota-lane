@@ -7,17 +7,10 @@ async function prepare() {
   if (!response.ok) throw new Error('Steam index unavailable')
   const payload = await response.json()
   const source = Array.isArray(payload) ? payload : (payload.guides || [])
-  const seen = new Set()
-  guides = []
+  // The daily importer already deduplicates and labels every guide. Keep its
+  // array intact so opening the feed does not copy thousands of records.
+  guides = source
   generatedAt = payload.generated_at || ''
-  for (const item of source) {
-    const url = String(item.url || '')
-    const id = url.match(/[?&]id=(\d+)/i)?.[1]
-    const key = id || url || String(item.hero || '') + '|' + String(item.title || '')
-    if (seen.has(key)) continue
-    seen.add(key)
-    guides.push({ ...item, source: 'steam' })
-  }
 }
 
 self.onmessage = async (event) => {
