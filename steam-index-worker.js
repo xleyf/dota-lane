@@ -30,13 +30,13 @@ self.onmessage = async (event) => {
     }
     if (type === 'next') {
       const start = Math.max(0, Number(event.data.offset) || 0)
-      const size = Math.min(80, Math.max(1, Number(event.data.limit) || 80))
+      const size = Math.min(20, Math.max(1, Number(event.data.limit) || 20))
       const batch = guides.slice(start, start + size)
       self.postMessage({ type: 'batch', guides: batch, offset: start + batch.length, done: start + batch.length >= guides.length })
       return
     }
     if (type === 'load') {
-      const batchSize = 80
+      const batchSize = 20
       for (let start = 0; start < guides.length; start += batchSize) {
         self.postMessage({ type: 'batch', guides: guides.slice(start, start + batchSize) })
         await new Promise(resolve => setTimeout(resolve, 0))
