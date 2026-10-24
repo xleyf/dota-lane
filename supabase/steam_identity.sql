@@ -121,7 +121,7 @@ grant select on public.content_reports to service_role;
 create or replace view public.community_profiles as
 select id, steam_id from public.steam_profiles;
 revoke all on public.community_profiles from anon, authenticated;
-grant select on public.community_profiles to anon, authenticated;
+-- This view is not used by the public client; keep Steam IDs private to the Edge Function.
 
 create index if not exists guides_owner_profile_idx on public.guides(owner_profile_id);
 create index if not exists forum_threads_owner_profile_idx on public.forum_threads(owner_profile_id);
