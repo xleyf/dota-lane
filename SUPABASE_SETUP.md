@@ -28,7 +28,7 @@ SQL-файлы создают ленту гайдов, обсуждения, о�
 
 Для включения открой GitHub → `xleyf/dota-lane` → Settings → Secrets and variables → Actions и добавь:
 
-- `SUPABASE_DB_URL` — строка подключения PostgreSQL из Supabase Dashboard → Connect → Session pooler. Подставь пароль базы; специальные символы в пароле должны быть percent-encoded. Не отправляй эту строку в чат и не добавляй в файлы репозитория.
+- `SUPABASE_DB_URL` — полная строка подключения PostgreSQL из Supabase Dashboard → Connect → Session pooler. Замени placeholder `[YOUR-PASSWORD]` своим паролем базы; не вставляй кавычки и переносы строк. Workflow сам кодирует спецсимволы пароля для URI. Не отправляй эту строку в чат и не добавляй в файлы репозитория.
 - `BACKUP_PASSPHRASE` — длинный случайный пароль (не менее 32 случайных символов). Сохрани его отдельно в менеджере паролей: без него расшифровать архивы будет невозможно. Не используй пароль от Steam или GitHub.
 
 После добавления секретов запусти workflow `Encrypted Supabase backup` через Actions → Run workflow и проверь, что появился artifact `supabase-backup-…`. Для восстановления скачай artifact, расшифруй командой `gpg --decrypt --output lane-database.tar.gz lane-database.tar.gz.gpg`, распакуй и выполни `schema.sql`, затем `data.sql` через PostgreSQL. Артефакты публичного репозитория могут быть видны другим пользователям GitHub, поэтому в них загружается только зашифрованный файл. Хранение ограничено 30 днями.

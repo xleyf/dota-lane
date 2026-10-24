@@ -40,8 +40,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          supabase db dump --db-url "$SUPABASE_DB_URL" --schema public --file "$RUNNER_TEMP/schema.sql"
-          supabase db dump --db-url "$SUPABASE_DB_URL" --schema public --data-only --use-copy --file "$RUNNER_TEMP/data.sql"
+          DB_URL="$(python3 - <<'PY'
+          import os
+          from urllib.parse import quote, unquote
+
+          value = os.environ["SUPABASE_DB_URL"].strip()
+          if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+              value = value[1:-1]
+          scheme, separator, remainder = value.partition("://")
+          userinfo, at, host_and_path = remainder.rpartition("@")
+          username, colon, password = userinfo.partition(":")
+          host, slash, database = host_and_path.partition("/")
+          if (scheme not in ("postgres", "postgresql") or not separator or not at or
+                  not colon or not username or not password or not host or not slash or not database or
+                  "\n" in value or "\r" in value):
+              raise SystemExit("SUPABASE_DB_URL must be a complete PostgreSQL URI from Supabase → Connect → Session pooler.")
+          # Normalize raw or already encoded credentials so reserved password characters
+          # cannot break URI parsing. Never print the resulting URI in the job log.
+          print(f"{scheme}://{quote(unquote(username), safe='')}:{quote(unquote(password), safe='')}@{host}/{database}")
+          PY
+          )"
+          echo "::add-mask::$DB_URL"
+          supabase db dump --db-url "$DB_URL" --schema public --file "$RUNNER_TEMP/schema.sql"
+          supabase db dump --db-url "$DB_URL" --schema public --data-only --use-copy --file "$RUNNER_TEMP/data.sql"
           tar -C "$RUNNER_TEMP" -czf "$RUNNER_TEMP/lane-database.tar.gz" schema.sql data.sql
 
       - name: Encrypt backup
