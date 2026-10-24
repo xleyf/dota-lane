@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          DB_URL="$(python3 - <<'PY'
+          DB_URLS="$(python3 - <<'PY'
           import os
           from urllib.parse import quote, unquote
 
@@ -55,13 +55,27 @@ jobs:
                   not colon or not username or not password or not host or not slash or not database or
                   "\n" in value or "\r" in value):
               raise SystemExit("SUPABASE_DB_URL must be a complete PostgreSQL URI from Supabase → Connect → Session pooler.")
-          # Normalize raw or already encoded credentials so reserved password characters
-          # cannot break URI parsing. Never print the resulting URI in the job log.
-          print(f"{scheme}://{quote(unquote(username), safe='')}:{quote(unquote(password), safe='')}@{host}/{database}")
+          # Try both raw and URL-encoded password forms. Never print either URI in the job log.
+          print(f"{scheme}://{quote(username, safe='')}:{quote(password, safe='')}@{host}/{database}")
+          decoded_password = unquote(password)
+          if decoded_password != password:
+              print(f"{scheme}://{quote(username, safe='')}:{quote(decoded_password, safe='')}@{host}/{database}")
           PY
           )"
-          echo "::add-mask::$DB_URL"
-          supabase db dump --db-url "$DB_URL" --schema public --file "$RUNNER_TEMP/schema.sql"
+          mapfile -t DB_URL_CANDIDATES <<< "$DB_URLS"
+          DB_URL=""
+          for candidate in "${DB_URL_CANDIDATES[@]}"; do
+            echo "::add-mask::$candidate"
+            if supabase db dump --db-url "$candidate" --schema public --file "$RUNNER_TEMP/schema.sql"; then
+              DB_URL="$candidate"
+              break
+            fi
+            rm -f "$RUNNER_TEMP/schema.sql"
+          done
+          if [[ -z "$DB_URL" ]]; then
+            echo "::error::Database authentication failed. Check the Supabase database password in SUPABASE_DB_URL."
+            exit 1
+          fi
           supabase db dump --db-url "$DB_URL" --schema public --data-only --use-copy --file "$RUNNER_TEMP/data.sql"
           tar -C "$RUNNER_TEMP" -czf "$RUNNER_TEMP/lane-database.tar.gz" schema.sql data.sql
 
