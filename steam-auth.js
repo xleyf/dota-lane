@@ -1,7 +1,9 @@
 (() => {
   const endpoint = `${SUPABASE_URL}/functions/v1/steam-auth`
   const tokenKey = 'lane-steam-session-v1'
-  let token = localStorage.getItem(tokenKey) || ''
+  let token = sessionStorage.getItem(tokenKey) || ''
+  // Remove sessions persisted by older versions; keep the new token only in this tab.
+  localStorage.removeItem(tokenKey)
   let profile = null
   let mine = { guides: [], threads: [], replies: [] }
   let observer
@@ -86,18 +88,18 @@
       try {
         const result = await api('exchange', { ticket })
         token = result.token
-        localStorage.setItem(tokenKey, token)
+        sessionStorage.setItem(tokenKey, token)
         profile = result.profile
         notifyUser(`Вход выполнен: Steam ID ${profile.steam_id}`)
       } catch (error) {
         token = ''
-        localStorage.removeItem(tokenKey)
+        sessionStorage.removeItem(tokenKey)
         notifyUser(error.message || 'Не удалось завершить вход Steam.')
       }
     }
     if (token) {
       try { profile = (await api('me')).profile }
-      catch { token = ''; profile = null; localStorage.removeItem(tokenKey) }
+      catch { token = ''; profile = null; sessionStorage.removeItem(tokenKey) }
     }
     drawAccount()
     await refreshMine()
@@ -106,7 +108,7 @@
   async function signOut() {
     try { await api('logout') } catch { /* expired sessions are removed locally */ }
     token = ''; profile = null; mine = { guides: [], threads: [], replies: [] }
-    localStorage.removeItem(tokenKey)
+    sessionStorage.removeItem(tokenKey)
     drawAccount(); decorateOwnedContent(); notifyUser('Вы вышли из аккаунта Steam.')
   }
   function requireSteam() {

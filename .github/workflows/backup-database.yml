@@ -1,0 +1,69 @@
+name: Encrypted Supabase backup
+
+on:
+  schedule:
+    - cron: "43 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check backup configuration
+        id: config
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        shell: bash
+        run: |
+          if [[ -n "$SUPABASE_DB_URL" && -n "$BACKUP_PASSPHRASE" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Add SUPABASE_DB_URL and BACKUP_PASSPHRASE in repository Actions secrets to enable backups."
+          fi
+
+      - name: Install Supabase CLI
+        if: steps.config.outputs.configured == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Dump application schema and data
+        if: steps.config.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db dump --db-url "$SUPABASE_DB_URL" --schema public --file "$RUNNER_TEMP/schema.sql"
+          supabase db dump --db-url "$SUPABASE_DB_URL" --schema public --data-only --use-copy --file "$RUNNER_TEMP/data.sql"
+          tar -C "$RUNNER_TEMP" -czf "$RUNNER_TEMP/lane-database.tar.gz" schema.sql data.sql
+
+      - name: Encrypt backup
+        if: steps.config.outputs.configured == 'true'
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gpg --batch --yes --pinentry-mode loopback \
+            --symmetric --cipher-algo AES256 --s2k-digest-algo SHA512 \
+            --passphrase "$BACKUP_PASSPHRASE" \
+            --output "$RUNNER_TEMP/lane-database.tar.gz.gpg" \
+            "$RUNNER_TEMP/lane-database.tar.gz"
+          rm -f "$RUNNER_TEMP/schema.sql" "$RUNNER_TEMP/data.sql" "$RUNNER_TEMP/lane-database.tar.gz"
+
+      - name: Store encrypted backup for 30 days
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: ${{ runner.temp }}/lane-database.tar.gz.gpg
+          if-no-files-found: error
+          retention-days: 30
+
