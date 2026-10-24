@@ -1,9 +1,9 @@
 (() => {
   const endpoint = `${SUPABASE_URL}/functions/v1/steam-auth`
   const tokenKey = 'lane-steam-session-v1'
-  let token = sessionStorage.getItem(tokenKey) || ''
+  let token = ''; try { token = sessionStorage.getItem(tokenKey) || '' } catch (error) { /* storage may be disabled */ }
   // Remove sessions persisted by older versions; keep the new token only in this tab.
-  localStorage.removeItem(tokenKey)
+  try { localStorage.removeItem(tokenKey) } catch (error) { /* storage may be disabled */ }
   let profile = null
   let mine = { guides: [], threads: [], replies: [] }
   let observer
@@ -88,18 +88,18 @@
       try {
         const result = await api('exchange', { ticket })
         token = result.token
-        sessionStorage.setItem(tokenKey, token)
+        try { sessionStorage.setItem(tokenKey, token) } catch (error) { /* session storage may be disabled */ }
         profile = result.profile
         notifyUser(`Вход выполнен: Steam ID ${profile.steam_id}`)
       } catch (error) {
         token = ''
-        sessionStorage.removeItem(tokenKey)
+        try { sessionStorage.removeItem(tokenKey) } catch (error) { /* storage may be disabled */ }
         notifyUser(error.message || 'Не удалось завершить вход Steam.')
       }
     }
     if (token) {
       try { profile = (await api('me')).profile }
-      catch { token = ''; profile = null; sessionStorage.removeItem(tokenKey) }
+      catch { token = ''; profile = null; try { sessionStorage.removeItem(tokenKey) } catch (error) { /* storage may be disabled */ } }
     }
     drawAccount()
     await refreshMine()
@@ -108,7 +108,7 @@
   async function signOut() {
     try { await api('logout') } catch { /* expired sessions are removed locally */ }
     token = ''; profile = null; mine = { guides: [], threads: [], replies: [] }
-    sessionStorage.removeItem(tokenKey)
+    try { sessionStorage.removeItem(tokenKey) } catch (error) { /* storage may be disabled */ }
     drawAccount(); decorateOwnedContent(); notifyUser('Вы вышли из аккаунта Steam.')
   }
   function requireSteam() {
