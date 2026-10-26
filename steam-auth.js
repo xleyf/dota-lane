@@ -335,7 +335,7 @@
         values = { target_type: data.get('target_type'), target_id: data.get('target_id'), reason: data.get('reason'), details: data.get('details') || '' }
       } else if (form.matches('.guide-feedback-form')) {
         const data = new FormData(form); action = 'rate_guide'
-        values = { guide_id: form.dataset.guideFeedbackForm, rating: Number(data.get('rating')) }
+        values = { guide_id: form.dataset.guideFeedbackForm, games_played: Number(data.get('games_played')), rating: Number(data.get('rating')) }
       } else return
       event.preventDefault(); event.stopImmediatePropagation()
       if (!profile) { requireSteam(); return }

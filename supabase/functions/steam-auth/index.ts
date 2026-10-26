@@ -225,11 +225,12 @@ async function handleAction(action: string, body: Record<string, unknown>, profi
     return moderate(action, body, profile, origin)
   if (action === 'rate_guide') {
     const guideId = String(body.guide_id || '')
+    const gamesPlayed = Number(body.games_played)
     const rating = Number(body.rating)
-    if (!/^\d{5,20}$/.test(guideId) || !Number.isInteger(rating) || rating < 1 || rating > 5) return fail('Укажи оценку от 1 до 5.', 400, origin)
+    if (!/^\d{5,20}$/.test(guideId) || !Number.isInteger(gamesPlayed) || gamesPlayed < 1 || gamesPlayed > 5000 || !Number.isInteger(rating) || rating < 1 || rating > 5) return fail('Укажи число матчей от 1 до 5000 и оценку от 1 до 5.', 400, origin)
     const rateLimit = await enforceWriteLimit(profileId, origin); if (rateLimit) return rateLimit
     const { error } = await db.from('guide_feedback').insert({
-      guide_id: guideId, visitor_id: profileId, games_played: 0, rating, steam_verified: true,
+      guide_id: guideId, visitor_id: profileId, games_played: gamesPlayed, rating, steam_verified: true,
     })
     if (error?.code === '23505') return fail('Ты уже оценивал это руководство.', 409, origin)
     return error ? fail('Не удалось сохранить оценку.', 503, origin) : json({ ok: true }, 200, origin)
