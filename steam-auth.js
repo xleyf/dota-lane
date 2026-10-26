@@ -350,11 +350,7 @@
     }, true)
   }
   function setUpObservers() {
-    const target = document.querySelector('#feed')
-    if (target) {
-      observer = new MutationObserver(() => decoratePerformance())
-      observer.observe(target, { childList: true, subtree: true })
-    }
+    document.addEventListener('lane:feed-rendered', decoratePerformance)
     const forum = document.querySelector('#threadList')
     if (forum) new MutationObserver(decorateOwnedContent).observe(forum, { childList: true, subtree: true })
     const detail = document.querySelector('#threadDetail')
