@@ -115,6 +115,12 @@ drop policy if exists "Visitors can submit replies for review" on public.forum_r
 drop policy if exists "Visitors can report public content" on public.content_reports;
 revoke insert, update, delete on public.guides, public.forum_threads,
   public.forum_replies, public.content_reports from anon, authenticated;
+
+-- The Edge Function uses service_role for all authenticated community writes and moderation.
+grant select, insert, update, delete on table public.guides, public.forum_threads,
+  public.forum_replies, public.content_reports, public.guide_feedback to service_role;
+grant usage, select on sequence public.guides_id_seq, public.forum_threads_id_seq,
+  public.forum_replies_id_seq, public.content_reports_id_seq to service_role;
 grant select on public.guides, public.forum_threads, public.forum_replies to anon, authenticated;
 grant select on public.content_reports to service_role;
 
