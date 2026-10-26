@@ -298,7 +298,7 @@ def main() -> None:
         page = {"guides": guides[start : start + PAGE_SIZE]}
         page_path = PAGE_OUTPUT / f"page-{page_number:03}.json"
         page_path.write_text(
-            json.dumps(page, ensure_ascii=False, separators=(",", ":")) + "\\n",
+            json.dumps(page, ensure_ascii=False, separators=(",", ":")) + "\n",
             encoding="utf-8",
         )
     manifest = {
@@ -309,7 +309,7 @@ def main() -> None:
         "page_count": (len(guides) + PAGE_SIZE - 1) // PAGE_SIZE,
     }
     MANIFEST_OUTPUT.write_text(
-        json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) + "\\n",
+        json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) + "\n",
         encoding="utf-8",
     )
     print(f"Wrote {len(guides)} Steam Hero Builds to {OUTPUT} in {manifest['page_count']} pages")
