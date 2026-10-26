@@ -17,6 +17,9 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "index.html"
 OUTPUT = ROOT / "steam-builds.json"
+PAGE_OUTPUT = ROOT / "steam-builds-pages"
+MANIFEST_OUTPUT = ROOT / "steam-builds-manifest.json"
+PAGE_SIZE = 100
 BASE = "https://steamcommunity.com/app/570/guides/"
 USER_AGENT = "Mozilla/5.0 (compatible; DotaLaneSteamBuildIndex/1.0)"
 PER_HERO = 20
@@ -274,9 +277,10 @@ def main() -> None:
     guides = list(best_by_id.values())
     guides.sort(key=lambda guide: int(guide["id"]), reverse=True)
     missing = [hero for hero in heroes if not collected.get(hero)]
+    generated_at = datetime.now(timezone.utc).isoformat()
     payload = {
         "source": "Steam Community",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": generated_at,
         "hero_count": len(heroes),
         "guide_count": len(guides),
         "missing_heroes": missing,
@@ -286,7 +290,29 @@ def main() -> None:
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n",
         encoding="utf-8",
     )
-    print(f"Wrote {len(guides)} Steam Hero Builds to {OUTPUT}")
+    if PAGE_OUTPUT.exists():
+        for old_page in PAGE_OUTPUT.glob("page-*.json"):
+            old_page.unlink()
+    PAGE_OUTPUT.mkdir(parents=True, exist_ok=True)
+    for page_number, start in enumerate(range(0, len(guides), PAGE_SIZE)):
+        page = {"guides": guides[start : start + PAGE_SIZE]}
+        page_path = PAGE_OUTPUT / f"page-{page_number:03}.json"
+        page_path.write_text(
+            json.dumps(page, ensure_ascii=False, separators=(",", ":")) + "\\n",
+            encoding="utf-8",
+        )
+    manifest = {
+        "source": payload["source"],
+        "generated_at": generated_at,
+        "guide_count": len(guides),
+        "page_size": PAGE_SIZE,
+        "page_count": (len(guides) + PAGE_SIZE - 1) // PAGE_SIZE,
+    }
+    MANIFEST_OUTPUT.write_text(
+        json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) + "\\n",
+        encoding="utf-8",
+    )
+    print(f"Wrote {len(guides)} Steam Hero Builds to {OUTPUT} in {manifest['page_count']} pages")
     if missing:
         print("No matching public Hero Builds found for: " + ", ".join(missing))
 
