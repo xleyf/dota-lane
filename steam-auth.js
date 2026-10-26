@@ -30,6 +30,7 @@
     .lane-edit-form textarea{min-height:100px;resize:vertical}.lane-queue-group{border-top:1px solid #343d40;padding-top:12px;margin-top:14px}
     .lane-queue-item{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #30383d;border-radius:6px;padding:10px;margin:7px 0}
     .lane-queue-item p{margin:3px 0 0;color:#9aa3a1;font-size:10px}.lane-queue-actions{display:flex;gap:6px;flex:none}
+    .lane-queue-guide-link{display:inline-flex;margin-top:7px;color:#e3a57c;font-size:10px;text-decoration:none}.lane-queue-guide-link:hover{color:#ffd1a3;text-decoration:underline}
     @media(max-width:600px){#laneAccount{margin-left:0}.lane-account-name{display:none}.lane-queue-item{align-items:flex-start;flex-direction:column}}
   `
   document.head.append(style)
@@ -51,6 +52,13 @@
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || `Ошибка ${response.status}`)
     return result
+  }
+  function safeSteamGuideHref(value) {
+    try {
+      const url = new URL(String(value || ''))
+      if (url.protocol !== 'https:' || !['steamcommunity.com', 'www.steamcommunity.com'].includes(url.hostname) || url.pathname !== '/sharedfiles/filedetails/' || !/^\d{5,20}$/.test(url.searchParams.get('id') || '')) return ''
+      return url.href
+    } catch { return '' }
   }
   function signIn() { location.href = `${endpoint}?action=login&apikey=${encodeURIComponent(SUPABASE_PUBLISHABLE_KEY)}` }
   function accountRoot() {
@@ -292,7 +300,11 @@
       const queue = await api('moderation_queue')
       const sections = [
         ['Гайды', 'guide', queue.guides], ['Темы', 'thread', queue.threads], ['Ответы', 'reply', queue.replies],
-      ].map(([label, type, items]) => `<section class="lane-queue-group"><h3>${label} · ${items.length}</h3>${items.map((item) => `<article class="lane-queue-item"><div><b>${escapeHtml(item.title || item.body.slice(0,100))}</b><p>${escapeHtml(item.hero || item.category || '')} · ${escapeHtml(item.body || item.description || '')}</p></div><div class="lane-queue-actions"><button class="lane-owner-btn" data-approve="${type}:${item.id}">Одобрить</button><button class="lane-owner-btn" data-reject="${type}:${item.id}">Отклонить</button></div></article>`).join('') || '<p>Очередь пуста.</p>'}</section>`)
+      ].map(([label, type, items]) => `<section class="lane-queue-group"><h3>${label} · ${items.length}</h3>${items.map((item) => {
+        const guideHref = type === 'guide' ? safeSteamGuideHref(item.steam_url) : ''
+        const guideLink = guideHref ? `<a class="lane-queue-guide-link" href="${escapeHtml(guideHref)}" target="_blank" rel="noopener noreferrer">Открыть Steam-гайд ↗</a>` : ''
+        return `<article class="lane-queue-item"><div><b>${escapeHtml(item.title || item.body.slice(0,100))}</b><p>${escapeHtml(item.hero || item.category || '')} · ${escapeHtml(item.body || item.description || '')}</p>${guideLink}</div><div class="lane-queue-actions"><button class="lane-owner-btn" data-approve="${type}:${item.id}">Одобрить</button><button class="lane-owner-btn" data-reject="${type}:${item.id}">Отклонить</button></div></article>`
+      }).join('') || '<p>Очередь пуста.</p>'}</section>`)
       const reports = `<section class="lane-queue-group"><h3>Жалобы · ${queue.reports.length}</h3>${queue.reports.map((r) => `<article class="lane-queue-item"><div><b>${escapeHtml(r.target_type)} · ${escapeHtml(r.target_id)}</b><p>${escapeHtml(r.reason)} · ${escapeHtml(r.details || '')}</p></div><div class="lane-queue-actions"><button class="lane-owner-btn" data-resolve="reviewed:${r.id}">Рассмотрена</button><button class="lane-owner-btn" data-resolve="dismissed:${r.id}">Отклонить</button></div></article>`).join('') || '<p>Новых жалоб нет.</p>'}</section>`
       dialog.innerHTML = `<div class="lane-dialog-head"><h2>Очередь модерации</h2><button class="lane-dialog-close" type="button">Закрыть</button></div>${sections.join('')}${reports}`
       dialog.querySelector('.lane-dialog-close').onclick = () => dialog.close()
