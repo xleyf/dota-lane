@@ -12,7 +12,7 @@ function card(b){
   const link=b.url||steamHeroSearch(b.hero);let guideId='';
   try{guideId=new URL(link).searchParams.get('id')||''}catch(error){}
   const heroImage=heroes.find(item=>item.name===b.hero);
-  const portrait=heroImage?`<img src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/${heroImage.slug}.png" alt="" loading="lazy">`:escapeHtml(b.glyph||b.hero[0]);
+  const portrait=heroImage?`<img src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/${heroImage.slug}.png" alt="" loading="lazy" decoding="async">`:escapeHtml(b.glyph||b.hero[0]);
   const stats=guideId?guideStats[guideId]:null;
   const reportType=b.source==='steam'?'steam_build':'community_guide';
   const reportId=b.source==='steam'?guideId:b.id;
@@ -57,7 +57,7 @@ function render(){
   const visible = shown.slice(0, feedLimit)
   const feed = $('#feed')
   const generation = ++feedRenderGeneration
-  const chunkSize = 4
+  const chunkSize = 2
   feed.replaceChildren()
 
   function finishRender() {
@@ -73,6 +73,7 @@ function render(){
       }
     })
     bindGuideFeedback()
+    window.dispatchEvent(new Event('lane:feed-rendered'))
     if (shown.length > visible.length || (feedLoadStarted && steamOffset < steamTotal)) {
       feed.insertAdjacentHTML('beforeend', `<div class="feed-more"><button class="btn btn-ghost" id="feedMore">${shown.length > visible.length ? 'Показать ещё 20' : 'Загрузить ещё 20'}</button></div>`)
       $('#feedMore').onclick = async () => {
